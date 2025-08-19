@@ -1,0 +1,11 @@
+{
+  "domain": "auto_light",
+  "name": "自动灯光",
+  "config_flow": true,
+  "documentation": "https://github.com/custom-components/auto_light",
+  "requirements": [],
+  "dependencies": ["light"],
+  "codeowners": [],
+  "version": "0.1.0",
+  "iot_class": "local_polling"
+}
