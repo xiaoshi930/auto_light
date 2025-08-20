@@ -1,4 +1,5 @@
 """Auto Light integration for Home Assistant."""
+import asyncio
 import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -44,6 +45,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
                 state_data["remove_state_listener"]()
             if "remove_interval" in state_data and state_data["remove_interval"] is not None:
                 state_data["remove_interval"]()
+            
+            # 取消延迟关灯任务
+            if "delay_off_task" in state_data and state_data["delay_off_task"] is not None:
+                state_data["delay_off_task"]()
         
         # 删除组件数据
         del hass.data[DOMAIN][entry.entry_id]
@@ -124,9 +129,12 @@ async def _create_automation(hass: HomeAssistant, entry: ConfigEntry):
                 try:
                     # 尝试将状态转换为数值
                     brightness_value = float(state)
-                    # 亮度阈值设为60，低于此值认为亮度低
-                    result = brightness_value < 60
-                    _LOGGER.info(f"亮度值: {brightness_value}, 阈值: 60, 判断结果: {result}")
+                    # 使用配置的亮度阈值
+                    brightness_threshold = hass.data[DOMAIN][entry.entry_id]["config"].get(
+                        "brightness_threshold", 60
+                    )
+                    result = brightness_value < brightness_threshold
+                    _LOGGER.info(f"亮度值: {brightness_value}, 阈值: {brightness_threshold}, 判断结果: {result}")
                     return result
                 except (ValueError, TypeError):
                     # 如果无法转换为数值，尝试其他判断方法
@@ -263,13 +271,54 @@ async def _create_automation(hass: HomeAssistant, entry: ConfigEntry):
             
             # Person left
             if old_presence and not new_presence:
-                _LOGGER.info("检测到人离开，准备关闭灯光")
-                for light in lights:
-                    if hass.states.is_state(light, STATE_ON):
-                        _LOGGER.info(f"正在关闭灯光: {light}")
-                        await hass.services.async_call(
-                            LIGHT_DOMAIN, "turn_off", {"entity_id": light}
-                        )
+                delay_off_time = hass.data[DOMAIN][entry.entry_id]["config"].get(
+                    "delay_off_time", 0
+                )
+                
+                if delay_off_time > 0:
+                    _LOGGER.info(f"检测到人离开，将在{delay_off_time}秒后关闭灯光")
+                    
+                    # 存储延迟关灯任务
+                    if "delay_off_task" not in hass.data[DOMAIN][entry.entry_id]["state"]:
+                        hass.data[DOMAIN][entry.entry_id]["state"]["delay_off_task"] = None
+                    
+                    # 取消之前的延迟任务（如果有）
+                    if hass.data[DOMAIN][entry.entry_id]["state"]["delay_off_task"] is not None:
+                        hass.data[DOMAIN][entry.entry_id]["state"]["delay_off_task"]()
+                    
+                    # 创建新的延迟任务
+                    async def delayed_turn_off():
+                        await asyncio.sleep(delay_off_time)
+                        
+                        # 检查是否仍然没有人
+                        presence_state = hass.states.get(presence_sensor)
+                        if presence_state:
+                            is_present = is_person_present(presence_state.state)
+                            _LOGGER.info(f"延迟{delay_off_time}秒后检查人在状态: {presence_state.state}, 判断结果={is_present}")
+                            
+                            if not is_present:
+                                _LOGGER.info(f"确认无人在场，现在关闭灯光")
+                                for light in lights:
+                                    if hass.states.is_state(light, STATE_ON):
+                                        _LOGGER.info(f"正在关闭灯光: {light}")
+                                        await hass.services.async_call(
+                                            LIGHT_DOMAIN, "turn_off", {"entity_id": light}
+                                        )
+                            else:
+                                _LOGGER.info(f"检测到人已返回，取消关灯操作")
+                        
+                        # 清除任务引用
+                        hass.data[DOMAIN][entry.entry_id]["state"]["delay_off_task"] = None
+                    
+                    hass.data[DOMAIN][entry.entry_id]["state"]["delay_off_task"] = hass.async_create_task(delayed_turn_off())
+                else:
+                    _LOGGER.info("检测到人离开，立即关闭灯光")
+                    for light in lights:
+                        if hass.states.is_state(light, STATE_ON):
+                            _LOGGER.info(f"正在关闭灯光: {light}")
+                            await hass.services.async_call(
+                                LIGHT_DOMAIN, "turn_off", {"entity_id": light}
+                            )
             
             # Person arrived
             elif not old_presence and new_presence:
