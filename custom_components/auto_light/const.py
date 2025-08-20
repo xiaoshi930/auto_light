@@ -19,6 +19,10 @@ CONF_LIGHT_TYPE = "light_type"
 CONF_LIGHTS = "lights"
 CONF_LIGHT_SCHEDULES = "light_schedules"
 CONF_NAME = "name"
+CONF_BRIGHTNESS_THRESHOLD = "brightness_threshold"
+CONF_DELAY_OFF_TIME = "delay_off_time"
 
 # Default values
 DEFAULT_NAME = "灯光自动化"
+DEFAULT_BRIGHTNESS_THRESHOLD = 60
+DEFAULT_DELAY_OFF_TIME = 0
