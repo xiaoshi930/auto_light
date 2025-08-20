@@ -5,6 +5,7 @@ from datetime import datetime, time
 from typing import Any, Dict, List, Optional
 
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry, OptionsFlow
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
@@ -34,6 +35,10 @@ from .const import (
     CONF_LIGHT_SCHEDULES,
     CONF_NAME,
     DEFAULT_NAME,
+    CONF_BRIGHTNESS_THRESHOLD,
+    CONF_DELAY_OFF_TIME,
+    DEFAULT_BRIGHTNESS_THRESHOLD,
+    DEFAULT_DELAY_OFF_TIME,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -235,7 +240,7 @@ class AutoLightConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # 创建一个合并的步骤，同时选择灯光和时间段
                 return await self.async_step_light_schedule_combined()
             else:
-                return await self.async_step_name()
+                return await self.async_step_advanced()
         
         # 根据灯光类型选择是否允许多选
         is_multiple = self._data[CONF_LIGHT_TYPE] != LIGHT_TYPE_SINGLE
@@ -263,7 +268,7 @@ class AutoLightConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # All schedules are configured, validate and proceed
             if await _validate_light_schedules(self.hass, self._light_schedules):
                 self._data[CONF_LIGHT_SCHEDULES] = self._light_schedules
-                return await self.async_step_name()
+                return await self.async_step_advanced()
             else:
                 errors["base"] = "invalid_schedules"
                 # Restart schedule configuration
@@ -355,7 +360,7 @@ class AutoLightConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.info(f"总覆盖小时数: {len(hours_covered)}, 覆盖的小时: {sorted(hours_covered)}")
             if len(hours_covered) == 24:
                 self._data[CONF_LIGHT_SCHEDULES] = light_schedules
-                return await self.async_step_name()
+                return await self.async_step_advanced()
             else:
                 errors["base"] = "invalid_schedules"
         
@@ -394,6 +399,35 @@ class AutoLightConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={"light_count": str(len(self._data[CONF_LIGHTS]))},
         )
     
+    async def async_step_advanced(self, user_input=None) -> FlowResult:
+        """Handle the advanced configuration step."""
+        errors = {}
+        
+        if user_input is not None:
+            self._data[CONF_BRIGHTNESS_THRESHOLD] = user_input[CONF_BRIGHTNESS_THRESHOLD]
+            self._data[CONF_DELAY_OFF_TIME] = user_input[CONF_DELAY_OFF_TIME]
+            return await self.async_step_name()
+        
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_BRIGHTNESS_THRESHOLD,
+                    default=DEFAULT_BRIGHTNESS_THRESHOLD
+                ): cv.positive_int,
+                vol.Required(
+                    CONF_DELAY_OFF_TIME,
+                    default=DEFAULT_DELAY_OFF_TIME
+                ): cv.positive_int,
+            }
+        )
+        
+        return self.async_show_form(
+            step_id="advanced",
+            data_schema=schema,
+            errors=errors,
+            last_step=False,
+        )
+        
     async def async_step_name(self, user_input=None) -> FlowResult:
         """Handle the name configuration step."""
         errors = {}
@@ -420,4 +454,58 @@ class AutoLightConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=schema,
             errors=errors,
             last_step=True,
+        )
+        
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        """Get the options flow for this handler."""
+        return AutoLightOptionsFlow(config_entry)
+
+
+class AutoLightOptionsFlow(config_entries.OptionsFlow):
+    """Handle options flow for Auto Light."""
+
+    def __init__(self, config_entry):
+        """Initialize options flow."""
+        self.config_entry = config_entry
+        self._data = dict(config_entry.data)
+
+    async def async_step_init(self, user_input=None):
+        """Manage the options."""
+        errors = {}
+        
+        if user_input is not None:
+            # 更新配置
+            self._data[CONF_BRIGHTNESS_THRESHOLD] = user_input[CONF_BRIGHTNESS_THRESHOLD]
+            self._data[CONF_DELAY_OFF_TIME] = user_input[CONF_DELAY_OFF_TIME]
+            
+            # 更新配置条目
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=self._data
+            )
+            
+            # 重新加载集成
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+            
+            return self.async_create_entry(title="", data={})
+        
+        # 创建表单
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_BRIGHTNESS_THRESHOLD,
+                    default=self._data.get(CONF_BRIGHTNESS_THRESHOLD, DEFAULT_BRIGHTNESS_THRESHOLD)
+                ): cv.positive_int,
+                vol.Required(
+                    CONF_DELAY_OFF_TIME,
+                    default=self._data.get(CONF_DELAY_OFF_TIME, DEFAULT_DELAY_OFF_TIME)
+                ): cv.positive_int,
+            }
+        )
+        
+        return self.async_show_form(
+            step_id="init",
+            data_schema=schema,
+            errors=errors,
         )
