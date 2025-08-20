@@ -47,6 +47,13 @@
           "end_hour": "结束小时"
         }
       },
+      "advanced": {
+        "title": "设置参数",
+        "data": {
+          "brightness_threshold": "亮度阈值",
+          "delay_off_time": "延迟关灯时间（秒）"
+        }
+      },
       "name": {
         "title": "设置名称",
         "data": {
@@ -60,6 +67,17 @@
     },
     "abort": {
       "already_configured": "此配置已存在"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "修改参数",
+        "data": {
+          "brightness_threshold": "亮度阈值",
+          "delay_off_time": "延迟关灯时间（秒）"
+        }
+      }
     }
   },
   "selector": {
