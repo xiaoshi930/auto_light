@@ -350,11 +350,9 @@ async def _create_automation(hass: HomeAssistant, entry: ConfigEntry):
             brightness_state = hass.states.get(brightness_sensor)
             
             if not presence_state:
-                _LOGGER.warning(f"无法获取人在传感器状态: {presence_sensor}")
                 return
                 
             if not brightness_state:
-                _LOGGER.warning(f"无法获取亮度传感器状态: {brightness_sensor}")
                 return
                 
             is_present = is_person_present(presence_state.state)
@@ -372,7 +370,7 @@ async def _create_automation(hass: HomeAssistant, entry: ConfigEntry):
                 if light_state:
                     _LOGGER.info(f"灯光 {light} 当前状态: {light_state.state}")
                 else:
-                    _LOGGER.warning(f"无法获取灯光 {light} 的状态")
+                    _LOGGER.info(f"无法获取灯光 {light} 的状态")
             
             # If person is present and it's dark, turn on lights
             if is_present and is_dark:
