@@ -14,7 +14,7 @@
 
 ## 安装方法：使用 HACS（推荐）
 
-1. 添加自定义库：https://github.com/xiaoshi930/auto_light/，类型选集成
+1. 添加自定义库：`https://github.com/xiaoshi930/auto_light`，类型选集成
 2. 搜索"自动灯光"并安装
 5. 重启 Home Assistant
 
