@@ -100,7 +100,7 @@ async def _create_automation(hass: HomeAssistant, entry: ConfigEntry):
             return result
         elif sensor_type == "motion":
             # 扩展无人状态列表
-            absent_states = ["2～5分钟无人移动", "5分钟以上无人移动","5 Minutes", "无人", "无人移动", "no motion", "no_motion", "idle"]
+            absent_states = ["5 Minutes", "无人", "无人移动", "no motion", "no_motion", "idle"]
             # 尝试将状态转换为小写进行比较
             result = state not in absent_states and str(state).lower() not in [str(s).lower() for s in absent_states]
             _LOGGER.info(f"motion模式: 状态={state}, 无人状态列表={absent_states}, 判断结果={result}")
