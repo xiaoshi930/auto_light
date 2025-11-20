@@ -246,6 +246,10 @@ async def _create_automation(hass: HomeAssistant, entry: ConfigEntry):
             # 如果新旧状态相同，仍然执行逻辑以确保灯光状态正确
             if new_presence == old_presence:
                 _LOGGER.info(f"人在状态未变化 (仍为 {new_presence})，但仍检查灯光状态")
+                # 检查自动化是否启用
+                if not hass.data[DOMAIN][entry.entry_id]["state"].get("enabled", True):
+                    _LOGGER.info("自动化当前已禁用，忽略状态未变化时的灯光操作")
+                    return
                 if new_presence:
                     # 人在，检查亮度并决定是否开灯
                     brightness_state = hass.states.get(brightness_sensor)
@@ -341,7 +345,7 @@ async def _create_automation(hass: HomeAssistant, entry: ConfigEntry):
         try:
             # 检查自动化是否启用
             if not hass.data[DOMAIN][entry.entry_id]["state"].get("enabled", True):
-                _LOGGER.debug("自动化当前已禁用，跳过定期检查")
+                _LOGGER.info("自动化当前已禁用，跳过定期检查")
                 return
                 
             _LOGGER.info(f"执行定期检查 (时间: {now})")
