@@ -468,7 +468,7 @@ class AutoLightOptionsFlow(config_entries.OptionsFlow):
 
     def __init__(self, config_entry):
         """Initialize options flow."""
-        self.config_entry = config_entry
+        self._config_entry = config_entry
         self._data = dict(config_entry.data)
 
     async def async_step_init(self, user_input=None):
@@ -482,11 +482,11 @@ class AutoLightOptionsFlow(config_entries.OptionsFlow):
             
             # 更新配置条目
             self.hass.config_entries.async_update_entry(
-                self.config_entry, data=self._data
+                self._config_entry, data=self._data
             )
             
             # 重新加载集成
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+            await self.hass.config_entries.async_reload(self._config_entry.entry_id)
             
             return self.async_create_entry(title="", data={})
         
